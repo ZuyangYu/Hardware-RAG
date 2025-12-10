@@ -8,5 +8,12 @@ wheels/
 
 # Virtual environments
 .venv
-storage/
-data/
+storage/chroma_db/
+storage/logs/
+storage/reranker_cache
+storage/docstore.json
+storage/graph_store.json
+storage/image__vector_store.json
+storage/index_store.json
+data/agent/
+data/source_documents/
