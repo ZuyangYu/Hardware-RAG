@@ -3,6 +3,14 @@
 Hardware RAG 是一个专为硬件技术文档设计的本地轻量化知识库问答系统, 能够通过克隆仓库到本地, pip或uv快速启动问答系统, 实现小团队的知识库搭建和问答, 也可以用于RAG检索流程的学习。
 它基于 LlamaIndex 和 Streamlit 构建，使用混合检索（Hybrid Retrieval） 策略，支持多知识库管理、文档增量更新以及灵活的模型配置（支持本地 Ollama 和云端 OpenAI 兼容 API）。
 ---
+# 🐱 部署示例
+## 📚知识库管理
+![知识库管理示例](assets/kap_example.png)
+
+## 🤖检索聊天
+![检索聊天机器人](assets/chat_example.png)
+
+---
 ## ✨ 核心特性
 
 - **高级混合检索架构** :
@@ -25,6 +33,7 @@ Hardware RAG 是一个专为硬件技术文档设计的本地轻量化知识库�
 
 ```
 Hardware-RAG/
+├── assets/                  # 应用示例图片
 ├── config/
 │   └── settings.py          # 全局配置与环境变量加载
 ├── data/                    # (自动生成) 原始文档存储路径
