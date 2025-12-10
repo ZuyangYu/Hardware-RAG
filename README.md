@@ -102,9 +102,11 @@ venv\Scripts\activate
 source venv/bin/activate
 ```
 ### **安装依赖** :
+
 ```bash
 pip install -r requirements.txt
 ```
+
 ### **启动应用** :
 ```bash
 streamlit run src/streamlit_app.py
