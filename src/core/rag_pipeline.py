@@ -6,6 +6,7 @@ from typing import List, Tuple
 from llama_index.core import SimpleDirectoryReader, Settings
 from llama_index.vector_stores.chroma import ChromaVectorStore
 from config.settings import DEFAULT_KB_NAME, DATA_ROOT
+from config.settings import STORAGE_DIR
 from src.ingestion.index_builder import (
     get_or_build_index,
     invalidate_index_cache
@@ -27,6 +28,7 @@ class RAGPipeline:
     def __init__(self):
         """初始化仅负责资源检查，不再绑定特定 KB"""
         try:
+            # 这里调用资源管理器，进行第一次全面初始化
             if not resource_manager.initialize():
                 raise RuntimeError("资源初始化失败")
         except Exception as e:
@@ -56,7 +58,7 @@ class RAGPipeline:
             history: 对话历史 [[q, a], [q, a]]
         """
         if not msg.strip():
-            return "⚠️请输入有效问题"
+            return "请输入有效问题"
 
         if not kb_name:
             return "❌ 未选择知识库"
@@ -78,7 +80,7 @@ class RAGPipeline:
 
     def upload_files(self, files, target_kb: str) -> str:
         if not files:
-            return "⚠️未选择文件"
+            return "未选择文件"
         if not target_kb:
             return "❌ 未选择目标知识库"
 
@@ -104,7 +106,7 @@ class RAGPipeline:
         return f"✅ 成功上传 {success_count}/{len(files)} 个文件\n" + "\n".join(results)
 
     def add_document(self, temp_file_path: str, kb_name: str) -> str:
-        """增量添加文档 (不再重建索引)"""
+        """增量添加文档 """
         try:
             if not os.path.exists(temp_file_path):
                 return "❌ 文件不存在"
@@ -120,29 +122,35 @@ class RAGPipeline:
             os.makedirs(target_dir, exist_ok=True)
             target_path = os.path.join(target_dir, filename)
 
-            # 处理重名
             if os.path.exists(target_path):
                 base, ext = os.path.splitext(filename)
                 filename = f"{base}_{int(time.time())}{ext}"
                 target_path = os.path.join(target_dir, filename)
-                log(f"⚠️ 文件名冲突，重命名为: {filename}")
+                log(f"文件名冲突，重命名为: {filename}")
 
             shutil.copy2(temp_file_path, target_path)
 
             # 2. 获取当前索引
             index = self.get_index(kb_name)
 
-            # 3. ✅ 增量更新：仅读取并插入新文件
-            log(f"📄 正在增量索引: {filename}")
+            # 3. 增量更新
+            log(f"正在增量索引: {filename}")
             new_docs = SimpleDirectoryReader(input_files=[target_path]).load_data()
 
-            # 插入到现有索引
+            # 此时 Settings.node_parser 已经是我们在 model_factory 里配置好的了
             nodes = Settings.node_parser.get_nodes_from_documents(new_docs)
             index.insert_nodes(nodes)
 
-            # 持久化
-            index.storage_context.persist()
-            log(f"✅ 增量索引完成: {filename}")
+            # ✅ 持久化到指定目录 (DocStore)
+            kb_persist_dir = os.path.join(STORAGE_DIR, f"docstore_{kb_name}")
+            os.makedirs(kb_persist_dir, exist_ok=True)
+            index.storage_context.persist(persist_dir=kb_persist_dir)
+
+            # ✅ 让 BM25 缓存失效，以便下次查询时包含新文件
+            invalidate_bm25_cache(kb_name)
+            invalidate_index_cache(kb_name)
+
+            log(f"✅ 增量索引完成并保存: {filename}")
             return f"✅ 索引成功: {filename}"
 
         except Exception as e:
@@ -176,7 +184,7 @@ class RAGPipeline:
             path = os.path.join(get_kb_path(kb_name), filename)
             if os.path.exists(path):
                 os.remove(path)
-                log(f"🗑️ 已删除文件: {filename}")
+                log(f"🗑已删除文件: {filename}")
 
             # 2. 获取索引
             index = self.get_index(kb_name)
@@ -204,13 +212,13 @@ class RAGPipeline:
                     for doc_id in doc_ids_to_delete:
                         try:
                             index.delete_ref_doc(doc_id, delete_from_docstore=True)
-                            log(f"🗑️ 已删除文档向量: {doc_id}")
+                            log(f"已删除文档向量: {doc_id}")
                         except Exception as e:
                             warn(f"删除文档向量失败 {doc_id}: {e}")
 
                     if not doc_ids_to_delete:
                         collection.delete(where={"file_name": filename})
-                        log(f"🗑️ 通过 metadata 删除向量: {filename}")
+                        log(f"通过 metadata 删除向量: {filename}")
 
             except Exception as e:
                 error(f"向量清理失败: {e}")

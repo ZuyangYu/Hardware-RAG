@@ -90,11 +90,11 @@ st.markdown("""
 
 
 # ==================== 初始化逻辑 ====================
-@st.cache_resource
+@st.cache_resource  # 这个装饰器保证 pipeline 只初始化一次，不会每点一下按钮就重启
 def init_pipeline():
     """初始化 RAG Pipeline"""
     try:
-        pipeline = RAGPipeline()
+        pipeline = RAGPipeline() # 初始化总的管道
         # 确保默认库存在
         pipeline.create_kb(DEFAULT_KB_NAME)
         return pipeline, None
@@ -173,8 +173,8 @@ def refresh_kb_list(pipeline):
 
 # ==================== 主界面 ====================
 def main():
-    init_session_state()
-    pipeline, error = init_pipeline()
+    init_session_state()        # 初始化一些变量（比如聊天记录）
+    pipeline, error = init_pipeline() # 初始化
 
     if error:
         st.error(f"❌ 系统初始化失败: {error}")
@@ -344,7 +344,7 @@ def render_chat_tab(pipeline):
 def render_kb_management_tab(pipeline):
     st.subheader("📚 知识库管理")
 
-    # --- 1. 上传区 ---
+    # --- 1. 上传区建立索引区 ---
     with st.container(border=True):
         st.markdown("##### 📤 当前知识库上传文档")
         files = st.file_uploader(
@@ -352,6 +352,7 @@ def render_kb_management_tab(pipeline):
             accept_multiple_files=True,
             type=["pdf", "txt", "md", "docx", "html", "csv"]
         )
+
         if files and st.button("开始上传", type="primary"):
             with st.status("处理中...", expanded=True) as status:
                 st.write("保存临时文件...")
@@ -377,7 +378,6 @@ def render_kb_management_tab(pipeline):
             st.success(res.split('\n')[0])
             time.sleep(1)
             st.rerun()
-
     st.divider()
 
     # --- 2. 列表与切换区 ---

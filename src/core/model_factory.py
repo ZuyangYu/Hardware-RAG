@@ -11,6 +11,7 @@ from llama_index.embeddings.ollama import OllamaEmbedding
 from src.core.custom_embedding import OpenRouterEmbedding
 from llama_index.core.postprocessor import SentenceTransformerRerank
 from config.settings import *
+from llama_index.core.node_parser import SentenceSplitter
 from src.core.logger import log, error, warn
 from src.core.custom_reranker import OllamaReranker, APIReranker, NoReranker
 from src.core.custom_llm import GenericOpenAILLM
@@ -19,14 +20,14 @@ from src.core.custom_llm import GenericOpenAILLM
 def init_global_models():
     """
     初始化全局模型配置
-    这是整个 RAG 系统的入口函数，负责初始化：
+    这是整个 RAG 系统的模型的入口函数，负责初始化：
     - LLM（大语言模型）
     - Embedding（文本向量化模型）
     - Reranker（重排序模型）
     """
     try:
         log("=" * 60)
-        log(f"🚀 初始化模型 Provider: {PROVIDER.name.upper()}")
+        log(f"初始化模型 Provider: {PROVIDER.name.upper()}")
         log("=" * 60)
 
         # 1. 初始化 LLM
@@ -37,6 +38,15 @@ def init_global_models():
 
         # 3. 初始化 Reranker
         _init_reranker()
+        # 4. 初始化 分词器
+        text_splitter = SentenceSplitter(
+            chunk_size=CHUNK_SIZE,
+            chunk_overlap=CHUNK_OVERLAP
+        )
+
+        Settings.text_splitter = text_splitter
+        Settings.node_parser = text_splitter
+        log(f"全局分词器已配置: Size={CHUNK_SIZE}, Overlap={CHUNK_OVERLAP}")
 
         log("=" * 60)
         log("✅ 全局模型初始化完成")
@@ -50,7 +60,6 @@ def init_global_models():
 def _init_llm():
     """
     初始化 LLM 模型
-
     根据 PROVIDER 配置选择：
     - ollama: 本地 Ollama 服务
     - custom: 第三方 API 服务
@@ -63,7 +72,7 @@ def _init_llm():
                 base_url=OLLAMA_BASE_URL,
                 request_timeout=360
             )
-            log(f"📝 LLM: Ollama")
+            log(f"LLM: Ollama")
             log(f"   ├─ 模型: {OLLAMA_LLM_MODEL}")
             log(f"   └─ 地址: {OLLAMA_BASE_URL}")
 
@@ -85,7 +94,8 @@ def _init_llm():
                 context_window=CUSTOM_CONTEXT_WINDOW,
                 max_tokens=CUSTOM_MAX_TOKENS
             )
-            log(f"📝 LLM: 自定义 API")
+
+            log(f"LLM: 自定义 API")
             log(f"   ├─ 模型: {CUSTOM_LLM_MODEL}")
             log(f"   ├─ 地址: {CUSTOM_BASE_URL}")
             log(f"   ├─ 上下文: {CUSTOM_CONTEXT_WINDOW}")
@@ -121,10 +131,10 @@ def _init_embedding():
             )
 
             if USE_OLLAMA_EMBEDDING and PROVIDER == Provider.CUSTOM: # 判断是不是混合模式
-                log(f"🔢 Embedding: Ollama（混合模式）")
-                log(f"   ℹ️LLM 用第三方 API，Embedding 用本地 Ollama")
+                log(f"Embedding: Ollama（混合模式）")
+                log(f"LLM 用第三方 API，Embedding 用本地 Ollama")
             else:
-                log(f"🔢 Embedding: Ollama")
+                log(f"Embedding: Ollama")
 
             log(f"   ├─ 模型: {OLLAMA_EMBEDDING_MODEL}")
             log(f"   └─ 地址: {OLLAMA_BASE_URL}")
@@ -133,20 +143,20 @@ def _init_embedding():
             # ==================== 第三方 API Embedding ====================
             # 只在明确不使用 Ollama 时才会走到这里
             if not CUSTOM_EMBEDDING_MODEL:
-                warn("⚠️未设置 CUSTOM_EMBEDDING_MODEL")
+                warn("未设置 CUSTOM_EMBEDDING_MODEL")
                 Settings.embed_model = None
             else:
                 embedding_model = CUSTOM_EMBEDDING_MODEL
 
-            warn("⚠️注意：很多第三方 API 不支持 Embedding")
-            warn("⚠️如遇到错误，请设置 USE_OLLAMA_EMBEDDING=true")
+            warn("注意：很多第三方 API 不支持 Embedding")
+            warn("如遇到错误，请设置 USE_OLLAMA_EMBEDDING=true")
 
             Settings.embed_model = OpenRouterEmbedding(
                 model=CUSTOM_EMBEDDING_MODEL,
                 api_key=CUSTOM_API_KEY,
                 api_base=CUSTOM_BASE_URL
             )
-            log(f"🔢 Embedding: 自定义 API")
+            log(f"Embedding: 自定义 API")
             log(f"   ├─ 模型: {embedding_model}")
             log(f"   └─ 地址: {CUSTOM_BASE_URL}")
 
@@ -174,7 +184,7 @@ def _init_reranker():
         if RERANKER_TYPE == RerankerType.NONE:
             # ==================== 不使用 Reranker ====================
             Settings.node_postprocessors = [NoReranker(top_n=FINAL_TOP_K)]
-            log(f"🎯 Reranker: 不使用（直接返回 Top {FINAL_TOP_K}）")
+            log(f"Reranker: 不使用（直接返回 Top {FINAL_TOP_K}）")
 
         elif RERANKER_TYPE == RerankerType.LOCAL:
             # ==================== 本地 Reranker ====================
@@ -187,7 +197,7 @@ def _init_reranker():
                     model=RERANKER_MODEL
                 )
             ]
-            log(f"🎯 Reranker: 本地模型")
+            log(f"Reranker: 本地模型")
             log(f"   ├─ 模型: {RERANKER_MODEL}")
             log(f"   ├─ Top-N: {FINAL_TOP_K}")
             log(f"   └─ 缓存: {RERANKER_CACHE}")
@@ -201,7 +211,7 @@ def _init_reranker():
                     top_n=FINAL_TOP_K
                 )
             ]
-            log(f"🎯 Reranker: Ollama")
+            log(f"Reranker: Ollama")
             log(f"   ├─ 模型: {OLLAMA_RERANKER_MODEL}")
             log(f"   ├─ 地址: {OLLAMA_BASE_URL}")
             log(f"   └─ Top-N: {FINAL_TOP_K}")
@@ -211,7 +221,7 @@ def _init_reranker():
             api_key = RERANKER_API_KEY or CUSTOM_API_KEY
 
             if not api_key:
-                warn("⚠️  Reranker API Key 未设置")
+                warn("Reranker API Key 未设置")
 
             Settings.node_postprocessors = [
                 APIReranker(
@@ -221,18 +231,18 @@ def _init_reranker():
                     top_n=FINAL_TOP_K
                 )
             ]
-            log(f"🎯 Reranker: API")
+            log(f"Reranker: API")
             log(f"   ├─ 模型: {RERANKER_MODEL}")
             log(f"   ├─ 地址: {RERANKER_API_BASE}")
             log(f"   └─ Top-N: {FINAL_TOP_K}")
 
         else:
-            warn(f"⚠️  未知的 Reranker 类型: {RERANKER_TYPE}")
+            warn(f"未知的 Reranker 类型: {RERANKER_TYPE}")
             Settings.node_postprocessors = [NoReranker(top_n=FINAL_TOP_K)]
 
     except Exception as e:
         error(f"❌ Reranker 初始化失败: {e}")
-        warn("⚠️  降级到不使用 Reranker")
+        warn("降级到不使用 Reranker")
         Settings.node_postprocessors = [NoReranker(top_n=FINAL_TOP_K)]
 
 
@@ -266,7 +276,7 @@ def print_config():
     """
     config = get_current_config()
     log("\n" + "=" * 60)
-    log("📋 当前配置")
+    log("当前配置")
     log("=" * 60)
     for key, value in config.items():
         log(f"   {key}: {value}")
@@ -309,6 +319,6 @@ def validate_config() -> tuple[bool, list[str]]:
 if __name__ != "__main__":
     is_valid, errors = validate_config()
     if not is_valid:
-        warn("⚠️  配置验证失败:")
+        warn("配置验证失败:")
         for err in errors:
-            warn(f"   - {err}")
+            warn(f"- {err}")

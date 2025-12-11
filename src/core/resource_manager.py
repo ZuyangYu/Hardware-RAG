@@ -1,5 +1,6 @@
 # src/core/resource_manager.py
 import chromadb
+import traceback
 import threading
 import time
 import atexit
@@ -12,7 +13,6 @@ from src.core.logger import log, error, warn
 class ResourceManager:
     """
     全局资源管理器（线程安全的单例模式 + 上下文管理器）
-
     功能:
     - 管理 ChromaDB 客户端连接
     - 管理全局模型（LLM、Embedding、Reranker）
@@ -50,24 +50,23 @@ class ResourceManager:
             self._chroma_client: Optional[chromadb.PersistentClient] = None
             self._models_initialized = False
             self._chroma_lock = threading.RLock()
-            self._model_lock = threading.RLock()
+            self._model_lock = threading.RLock()  # 线程锁
             self._health_status = {
                 "chroma": False,
                 "models": False,
                 "last_check": None
             }
-            self._is_shutdown = False  # ✅ 新增：标记是否已关闭
+            self._is_shutdown = False   # ✅ 新增：标记是否已关闭
             self._initialized = True
 
             # ✅ 自动注册清理函数
             atexit.register(self._atexit_cleanup)
-
-            log("📦 资源管理器已创建")
+            log("资源管理器已创建")
 
     def _atexit_cleanup(self):
         """程序退出时自动清理"""
         if not self._is_shutdown:
-            log("🔔 检测到程序退出，执行资源清理...")
+            log("检测到程序退出，执行资源清理...")
             self.shutdown()
 
     # ==================== 上下文管理器协议 ====================
@@ -87,19 +86,18 @@ class ResourceManager:
     def initialize(self, force: bool = False) -> bool:
         """初始化所有全局资源"""
         if self._is_shutdown:
-            warn("⚠️ 资源管理器已关闭，无法重新初始化")
+            warn("资源管理器已关闭，无法重新初始化")
             return False
 
         if not force and self._models_initialized and self._chroma_client is not None:
-            log("✅ 资源已初始化，跳过")
+            log("资源已初始化，跳过")
             return True
 
         log("=" * 70)
-        log("🚀 开始初始化全局资源")
+        log("开始初始化全局资源")
         log("=" * 70)
 
         success = True
-
         # 1. 初始化模型
         if not self._initialize_models(force):
             success = False
@@ -129,7 +127,7 @@ class ResourceManager:
                 return True
 
             try:
-                log("🤖 初始化全局模型...")
+                log("初始化全局模型...")
                 init_global_models()
                 self._models_initialized = True
                 self._health_status["models"] = True
@@ -139,7 +137,6 @@ class ResourceManager:
             except Exception as e:
                 error(f"❌ 模型初始化失败: {e}")
                 self._health_status["models"] = False
-                import traceback
                 traceback.print_exc()
                 return False
 
@@ -154,15 +151,13 @@ class ResourceManager:
                     log("✅ ChromaDB 已连接，跳过")
                     return True
                 else:
-                    warn("⚠️ ChromaDB 连接失效，尝试重新连接")
+                    warn("ChromaDB 连接失效，尝试重新连接")
                     self._chroma_client = None
 
-            log(f"🗄️ 连接 ChromaDB: {CHROMA_PATH}")
-
+            log(f"连接 ChromaDB: {CHROMA_PATH}")
             for attempt in range(1, self.MAX_RETRIES + 1):
                 try:
-                    log(f"   尝试 {attempt}/{self.MAX_RETRIES}...")
-
+                    log(f"尝试 {attempt}/{self.MAX_RETRIES}...")
                     self._chroma_client = chromadb.PersistentClient(
                         path=CHROMA_PATH,
                         settings=chromadb.Settings(
@@ -171,7 +166,6 @@ class ResourceManager:
                             is_persistent=True
                         )
                     )
-
                     if self._test_chroma_connection():
                         log(f"✅ ChromaDB 连接成功")
                         self._health_status["chroma"] = True
@@ -186,11 +180,10 @@ class ResourceManager:
 
                     if attempt < self.MAX_RETRIES:
                         delay = self.RETRY_DELAY_BASE ** attempt
-                        log(f"⏳ 等待 {delay} 秒后重试...")
+                        log(f"等待 {delay} 秒后重试...")
                         time.sleep(delay)
                     else:
                         error("❌ ChromaDB 连接失败，已达最大重试次数")
-                        import traceback
                         traceback.print_exc()
                         return False
 
@@ -216,7 +209,7 @@ class ResourceManager:
 
         with self._chroma_lock:
             if self._chroma_client is None or not self._test_chroma_connection():
-                log("⚠️ ChromaDB 连接不可用，尝试重新连接...")
+                log("ChromaDB 连接不可用，尝试重新连接...")
                 if not self._initialize_chroma(force=True):
                     raise RuntimeError(
                         "无法连接到 ChromaDB。请检查:\n"
@@ -237,7 +230,7 @@ class ResourceManager:
                 "last_check": time.time()
             }
 
-        log("🏥 执行健康检查...")
+        log("执行健康检查...")
 
         models_ok = self._models_initialized
         chroma_ok = self._test_chroma_connection()
@@ -276,11 +269,11 @@ class ResourceManager:
             "last_check": time.time()
         })
 
-        log(f"   模型: {status['models']['status']}")
-        log(f"   ChromaDB: {status['chroma']['status']}")
+        log(f"模型: {status['models']['status']}")
+        log(f"ChromaDB: {status['chroma']['status']}")
         if chroma_stats:
-            log(f"   - 集合数: {chroma_stats.get('collections', 0)}")
-            log(f"   - 总向量数: {chroma_stats.get('total_vectors', 0)}")
+            log(f"- 集合数: {chroma_stats.get('collections', 0)}")
+            log(f"- 总向量数: {chroma_stats.get('total_vectors', 0)}")
 
         return status
 
@@ -297,11 +290,11 @@ class ResourceManager:
     def reset_chroma(self) -> bool:
         """重置 ChromaDB 连接"""
         if self._is_shutdown:
-            warn("⚠️ 资源管理器已关闭")
+            warn("资源管理器已关闭")
             return False
 
         with self._chroma_lock:
-            log("🔄 重置 ChromaDB 连接...")
+            log("重置 ChromaDB 连接...")
 
             if self._chroma_client is not None:
                 try:
@@ -315,21 +308,21 @@ class ResourceManager:
     def reset_models(self) -> bool:
         """重置模型"""
         if self._is_shutdown:
-            warn("⚠️ 资源管理器已关闭")
+            warn("资源管理器已关闭")
             return False
 
         with self._model_lock:
-            log("🔄 重置模型...")
+            log("重置模型...")
             self._models_initialized = False
             return self._initialize_models(force=True)
 
     def reset_all(self) -> bool:
         """重置所有资源"""
         if self._is_shutdown:
-            warn("⚠️ 资源管理器已关闭")
+            warn("资源管理器已关闭")
             return False
 
-        log("🔄 重置所有资源...")
+        log("重置所有资源...")
         models_ok = self.reset_models()
         chroma_ok = self.reset_chroma()
         return models_ok and chroma_ok
@@ -341,7 +334,7 @@ class ResourceManager:
         if self._is_shutdown:
             return
 
-        log("🛑 关闭资源管理器...")
+        log("关闭资源管理器...")
         self._is_shutdown = True
 
         # 1. 关闭 ChromaDB 连接
@@ -349,7 +342,7 @@ class ResourceManager:
             if self._chroma_client is not None:
                 try:
                     # ChromaDB 的 PersistentClient 会自动处理清理
-                    log("🗄️ 正在关闭 ChromaDB 连接...")
+                    log("正在关闭 ChromaDB 连接...")
                     self._chroma_client = None
                     self._health_status["chroma"] = False
                     log("✅ ChromaDB 连接已关闭")
@@ -359,7 +352,7 @@ class ResourceManager:
         # 2. 清理模型状态
         with self._model_lock:
             try:
-                log("🤖 正在清理模型状态...")
+                log("正在清理模型状态...")
                 self._models_initialized = False
                 self._health_status["models"] = False
                 log("✅ 模型状态已清理")
@@ -380,7 +373,7 @@ class ResourceManager:
     def __del__(self):
         """析构函数：确保资源被清理"""
         if not self._is_shutdown:
-            warn("⚠️ ResourceManager 未正常关闭，执行紧急清理")
+            warn("ResourceManager 未正常关闭，执行紧急清理")
             try:
                 self.shutdown()
             except:
