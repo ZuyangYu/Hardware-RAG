@@ -15,9 +15,10 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ==================== CSS 样式 ====================
+# ==================== CSS 样式配置 ====================
 st.markdown("""
 <style>
+    /* ========== 1. 全局与容器调整 ========== */
     .block-container {
         padding-top: 2rem !important;
         padding-bottom: 1rem !important;
@@ -25,16 +26,11 @@ st.markdown("""
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
 
-    /* ========== 侧边栏样式自定义 ========== */
+    /* ========== 2. 侧边栏样式优化 ========== */
     section[data-testid="stSidebar"] p, 
     section[data-testid="stSidebar"] span {
         font-size: 16px !important;
         line-height: 1.8 !important;
-    }
-    section[data-testid="stSidebar"] .stRadio label p {
-        font-size: 18px !important;
-        font-weight: 500 !important;
-        padding-bottom: 8px !important;
     }
     section[data-testid="stSidebar"] h1,
     section[data-testid="stSidebar"] h2,
@@ -48,30 +44,7 @@ st.markdown("""
         margin-bottom: 1rem !important;
     }
 
-    /* 聊天气泡样式 */
-    .user-msg-container {
-        background-color: #e3f2fd;
-        padding: 15px 20px;
-        border-radius: 15px 15px 0 15px;
-        margin: 10px 0;
-        float: right;
-        max-width: 85%;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-        text-align: left;
-    }
-
-    .assistant-msg-container {
-        background-color: #f5f5f5;
-        padding: 15px 20px;
-        border-radius: 15px 15px 15px 0;
-        margin: 10px 0;
-        float: left;
-        max-width: 85%;
-        border: 1px solid #e0e0e0;
-        text-align: left;
-    }
-
-    /* 状态指示灯 */
+    /* ========== 3. 状态指示灯 (侧边栏顶部) ========== */
     .status-indicator {
         display: inline-block;
         width: 10px;
@@ -82,9 +55,56 @@ st.markdown("""
     .status-ok { background-color: #4caf50; }
     .status-error { background-color: #f44336; }
 
-    .stButton button {
-        transition: all 0.2s;
+    /* ========== 4. 聊天界面样式 (核心修改) ========== */
+    /* 助手消息 (原生 st.chat_message) */
+    /* 给助手气泡加一个浅灰背景，使其更像气泡 */
+    [data-testid="stChatMessageContent"] {
+        background-color: #f0f2f6;
+        border-radius: 10px;
+        padding: 10px 15px;
+        border-top-left-radius: 0; /* 左上角尖角 */
+        margin-right: 20%; /* 限制最大宽度 */
+        margin-top: 20px !important;
     }
+
+    /* 容器：顶部对齐 */
+    .user-chat-container {
+        display: flex;
+        justify-content: flex-end;
+        align-items: flex-start; /* 顶部对齐 */
+        margin-bottom: 20px;
+    }
+
+     /* 用户头像 */
+    .user-avatar {
+        width: 30px;
+        height: 30px;
+        font-size: 32px;
+        margin-left: 3px;
+        margin-right: 15px; 
+        /* 头像自然对齐顶部 */
+        display: flex;
+        align-items: flex-start; 
+        padding-top: 0px;
+    }
+
+    /* 用户气泡 */
+    .user-bubble {
+        background-color: transparent; 
+        border: 1px solid #e0e0e0;
+        color: inherit;
+        padding: 8px 12px;
+        border-radius: 12px;
+        /* 🔥 关键还原：右上角尖角 (符合图片) */
+        border-top-right-radius: 0; 
+        max-width: 80%;
+        text-align: left;
+        word-wrap: break-word;
+        box-shadow: 0 1px 1px rgba(0,0,0,0.03);
+        /* 🔥 关键微调：气泡下沉 12px，对齐头像的眼睛/面部，而不是头顶 */
+        margin-top: 30px; 
+    }
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -264,78 +284,104 @@ def main():
 
 
 # ==================== Tab 1: 对话界面 ====================
+# src/streamlit_app.py
+
 def render_chat_tab(pipeline):
     st.caption(f"正在使用知识库: `{st.session_state.current_kb}`")
 
     chat_container = st.container(height=650, border=True)
 
     with chat_container:
+        # --- 欢迎语 ---
         if not st.session_state.messages:
             st.markdown(
-                "<div style='text-align:center; color:gray; padding-top:200px;'>👋 你好！我是硬件检索助手，请问有什么可以帮你？</div>",
-                unsafe_allow_html=True)
-
-        for msg in st.session_state.messages:
-            if msg["role"] == "user":
-                safe_content = msg["content"].replace("\n", "<br>")
-
-                html_code = f"""
-<div style="overflow: hidden;">
-<div class="user-msg-container">
-<strong>🐱‍👤 :</strong><br>{safe_content}
-</div>
-</div>
-"""
-                st.markdown(html_code, unsafe_allow_html=True)
-
-            else:
+                """
+                <div style='text-align:center; color:#888; padding-top:180px;'>
+                    <h3 style="margin-top:10px;">🙌 硬件检索助手</h3>
+                    <p>请问有什么可以帮您？</p>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+        else:
+            # --- 消息渲染 ---
+            for msg in st.session_state.messages:
+                role = msg["role"]
                 content = msg["content"]
-                source_display = ""
-                if "🔍 检索到的上下文" in content:
-                    main_text, source_text = content.split("🔍 检索到的上下文", 1)
-                    content = main_text.strip()
-                    safe_source = source_text.replace("\n", "<br>")
 
-                    source_display = f"""
-<details style="margin-top:10px; border-top:1px solid #ddd; padding-top:5px;">
-<summary style="cursor:pointer; color:#2196f3;">📚 参考来源 (点击展开)</summary>
-<div style="font-size:0.9em; color:#666; margin-top:5px;">
-{safe_source}
-</div>
-</details>
-"""
+                if role == "user":
+                    # 用户消息
+                    safe_content = content.replace("\n", "<br>")
+                    st.markdown(
+                        f"""
+                        <div class="user-chat-container">
+                            <div class="user-bubble">{safe_content}</div>
+                            <div class="user-avatar">🧑</div> 
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+                else:
+                    # 助手消息
+                    with st.chat_message("assistant", avatar="😽"):
+                        # 👇 修复点：使用完整的分隔符进行切割，包含星号和冒号
+                        separator = "**🔍 检索到的上下文:**"
 
-                # 内容替换换行符
-                safe_content = content.replace("\n", "<br>")
-
-                # 助手消息 HTML 顶格
-                html_code = f"""
-<div style="overflow: hidden;">
-<div class="assistant-msg-container">
-<strong>😽 :</strong><br>{safe_content}
-{source_display}
-</div>
-</div>
-"""
-                st.markdown(html_code, unsafe_allow_html=True)
+                        if separator in content:
+                            try:
+                                main_text, source_text = content.split(separator, 1)
+                                st.markdown(main_text.strip())
+                                with st.expander("📚 参考来源"):
+                                    st.markdown(source_text.strip())
+                            except ValueError:
+                                st.markdown(content)
+                        else:
+                            st.markdown(content)
 
     st.markdown("---")
+
+    # --- 输入区 ---
     col_input, col_btn = st.columns([6, 1])
-
     with col_input:
-        user_input = st.chat_input("请输入您的问题...", key="chat_input")
-
+        user_input = st.chat_input("请输入问题...", key="chat_input")
     with col_btn:
         if st.button("🗑️ 清空", use_container_width=True):
             st.session_state.messages = []
             st.rerun()
 
+    # --- 处理新输入 ---
     if user_input:
         st.session_state.messages.append({"role": "user", "content": user_input})
+
         with chat_container:
-            with st.spinner("😻 正在检索与思考..."):
-                history = [(m["content"], "") for m in st.session_state.messages if m["role"] == "user"]
-                response = pipeline.query(user_input, st.session_state.current_kb, history[-5:])
+            # 1. 用户消息上屏
+            safe_input = user_input.replace("\n", "<br>")
+            st.markdown(
+                f"""
+                <div class="user-chat-container">
+                    <div class="user-bubble">{safe_input}</div>
+                    <div class="user-avatar">🧑</div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+            # 2. 助手回答
+            with st.chat_message("assistant", avatar="😻"):
+                with st.spinner("思考中..."):
+                    history = [(m["content"], "") for m in st.session_state.messages if m["role"] == "user"]
+                    response = pipeline.query(user_input, st.session_state.current_kb, history[-5:])
+
+                    # 👇 修复点：同样的切割逻辑
+                    separator = "**🔍 检索到的上下文:**"
+                    if separator in response:
+                        main_text, source_text = response.split(separator, 1)
+                        st.markdown(main_text.strip())
+                        with st.expander("📚 参考来源"):
+                            st.markdown(source_text.strip())
+                    else:
+                        st.markdown(response)
+
         st.session_state.messages.append({"role": "assistant", "content": response})
         st.rerun()
 
