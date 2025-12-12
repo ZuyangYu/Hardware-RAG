@@ -26,7 +26,7 @@ st.markdown("""
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
 
-    /* ========== 2. 侧边栏样式优化 ========== */
+    /* ========== 2. 侧边栏样式========== */
     section[data-testid="stSidebar"] p, 
     section[data-testid="stSidebar"] span {
         font-size: 16px !important;
@@ -44,7 +44,7 @@ st.markdown("""
         margin-bottom: 1rem !important;
     }
 
-    /* ========== 3. 状态指示灯 (侧边栏顶部) ========== */
+    /* ========== 3. 状态指示灯 ========== */
     .status-indicator {
         display: inline-block;
         width: 10px;
@@ -52,10 +52,10 @@ st.markdown("""
         border-radius: 50%;
         margin-right: 5px;
     }
-    .status-ok { background-color: #4caf50; }
-    .status-error { background-color: #f44336; }
+    .status-error { background-color: #4caf50; }
+    .status-ok { background-color: #f44336; }
 
-    /* ========== 4. 聊天界面样式 (核心修改) ========== */
+    /* ========== 4. 聊天界面样式  ========== */
     /* 助手消息 (原生 st.chat_message) */
     /* 给助手气泡加一个浅灰背景，使其更像气泡 */
     [data-testid="stChatMessageContent"] {
@@ -110,12 +110,11 @@ st.markdown("""
 
 
 # ==================== 初始化逻辑 ====================
-@st.cache_resource  # 这个装饰器保证 pipeline 只初始化一次，不会每点一下按钮就重启
+@st.cache_resource
 def init_pipeline():
     """初始化 RAG Pipeline"""
     try:
-        pipeline = RAGPipeline() # 初始化总的管道
-        # 确保默认库存在
+        pipeline = RAGPipeline()
         pipeline.create_kb(DEFAULT_KB_NAME)
         return pipeline, None
     except Exception as e:
@@ -193,8 +192,8 @@ def refresh_kb_list(pipeline):
 
 # ==================== 主界面 ====================
 def main():
-    init_session_state()        # 初始化一些变量（比如聊天记录）
-    pipeline, error = init_pipeline() # 初始化
+    init_session_state()
+    pipeline, error = init_pipeline()
 
     if error:
         st.error(f"❌ 系统初始化失败: {error}")
@@ -256,7 +255,14 @@ def main():
             st.session_state.confirm_delete_file = None
             st.rerun()
 
-        st.info(f"当前库包含 {len(pipeline.list_files(st.session_state.current_kb))} 个文件")
+        # 使用 st.expander 实现"下拉展开查看"，而非下拉选择
+        kb_files = pipeline.list_files(st.session_state.current_kb)
+        st.info(f"当前库包含 {len(kb_files)} 个文件")
+
+        if kb_files:
+            with st.expander("📚 查看库内文档"):
+                for f in kb_files:
+                    st.markdown(f"- 📄 {f}")
 
         st.divider()
         st.markdown("### 🐱‍👓️ 说明与注意事项")
@@ -284,8 +290,6 @@ def main():
 
 
 # ==================== Tab 1: 对话界面 ====================
-# src/streamlit_app.py
-
 def render_chat_tab(pipeline):
     st.caption(f"正在使用知识库: `{st.session_state.current_kb}`")
 
@@ -297,7 +301,7 @@ def render_chat_tab(pipeline):
             st.markdown(
                 """
                 <div style='text-align:center; color:#888; padding-top:180px;'>
-                    <h3 style="margin-top:10px;">🙌 硬件检索助手</h3>
+                    <h3 style="margin-top:10px;">🙌 硬件文档检索助手</h3>
                     <p>请问有什么可以帮您？</p>
                 </div>
                 """,
@@ -324,9 +328,7 @@ def render_chat_tab(pipeline):
                 else:
                     # 助手消息
                     with st.chat_message("assistant", avatar="😽"):
-                        # 👇 修复点：使用完整的分隔符进行切割，包含星号和冒号
                         separator = "**🔍 检索到的上下文:**"
-
                         if separator in content:
                             try:
                                 main_text, source_text = content.split(separator, 1)
@@ -372,7 +374,6 @@ def render_chat_tab(pipeline):
                     history = [(m["content"], "") for m in st.session_state.messages if m["role"] == "user"]
                     response = pipeline.query(user_input, st.session_state.current_kb, history[-5:])
 
-                    # 👇 修复点：同样的切割逻辑
                     separator = "**🔍 检索到的上下文:**"
                     if separator in response:
                         main_text, source_text = response.split(separator, 1)
