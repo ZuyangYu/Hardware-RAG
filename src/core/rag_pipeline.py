@@ -154,10 +154,18 @@ class RAGPipeline:
             return f"✅ 索引成功: {filename}"
 
         except Exception as e:
-            error(f"❌ 上传文档失败: {e}")
-            import traceback
-            traceback.print_exc()
-            return f"❌ 上传失败: {str(e)}"
+            error(f"❌ 上传文档处理失败: {e}")
+
+            # 如果文件已经拷贝过去了，但索引失败，必须删掉它！
+            if target_path and os.path.exists(target_path):
+                try:
+                    os.remove(target_path)
+                    log(f"⚠️ 已执行回滚：删除了未成功索引的文件 {target_path}")
+                except Exception as cleanup_err:
+                    error(f"❌ 回滚删除文件失败: {cleanup_err}")
+
+            # 重新抛出异常，让上层知道失败了
+            raise e
 
     def create_kb(self, name: str) -> Tuple[bool, str]:
         try:

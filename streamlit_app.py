@@ -63,7 +63,8 @@ st.markdown("""
         border-radius: 10px;
         padding: 10px 15px;
         border-top-left-radius: 0; /* 左上角尖角 */
-        margin-right: 20%; /* 限制最大宽度 */
+        margin-right: 40%; /* 限制最大宽度 */
+        font-size: 20px !important;
         margin-top: 20px !important;
     }
 
@@ -101,10 +102,30 @@ st.markdown("""
         text-align: left;
         word-wrap: break-word;
         box-shadow: 0 1px 1px rgba(0,0,0,0.03);
+        font-size: 20px !important;
         /* 🔥 关键微调：气泡下沉 12px，对齐头像的眼睛/面部，而不是头顶 */
         margin-top: 30px; 
     }
+    /* ========== [新增] AI 助手头像大小调节 ========== */
+    /* 1. 放大头像容器，并设置最小宽度防止被Flex挤压 */
+    [data-testid="stChatMessage"] [data-testid="stChatMessageAvatar"] {
+        width: 60px !important;
+        height: 60px !important;
+        min-width: 60px !important; /* 关键：防止 flex 布局压缩 */
+        margin-right: 15px !important; /* 增加头像和气泡的间距 */
+    }
 
+    /* 2. 放大头像内部的 Emoji 字体和居中容器 */
+    [data-testid="stChatMessage"] [data-testid="stChatMessageAvatar"] > div {
+        width: 60px !important;
+        height: 60px !important;
+        line-height: 60px !important;
+        font-size: 40px !important; /* Emoji 字体大小 */
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border-radius: 50% !important; /* 保持圆形 */
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -292,8 +313,7 @@ def main():
 # ==================== Tab 1: 对话界面 ====================
 def render_chat_tab(pipeline):
     st.caption(f"正在使用知识库: `{st.session_state.current_kb}`")
-
-    chat_container = st.container(height=650, border=True)
+    chat_container = st.container(height=750, border=True)
 
     with chat_container:
         # --- 欢迎语 ---
