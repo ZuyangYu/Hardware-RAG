@@ -1,6 +1,6 @@
 <div align="center">
 
-<img width="256" src="https://github.com/user-attachments/assets/logo.png">
+<img width="256" src="./assets/logo.png">
 
 *Enhance the retrieval assistant with hardware documentation to retrieve hardware documentation.*
 
