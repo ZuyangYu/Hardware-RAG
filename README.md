@@ -1,7 +1,26 @@
-# 😺 Hardware RAG
+<div align="center">
 
-Hardware RAG 是一个专为硬件技术文档设计的本地轻量化知识库问答系统, 能够通过克隆仓库到本地, pip或uv快速启动问答系统, 实现小团队的知识库搭建和问答, 也可以用于RAG检索流程的学习。
-它基于 LlamaIndex 和 Streamlit 构建，使用混合检索（Hybrid Retrieval） 策略，支持多知识库管理、文档增量更新以及灵活的模型配置（支持本地 Ollama 和云端 OpenAI 兼容 API）。
+<img width="256" src="https://github.com/user-attachments/assets/logo.png">
+
+*Enhance the retrieval assistant with hardware documentation to retrieve hardware documentation.*
+
+<p>
+
+<b>Hardware RAG 是一个专为硬件技术文档设计的本地轻量化知识库问答系统，<br></b>
+<b> 能够通过克隆仓库到本地, pip或uv快速启动问答系统, 实现小团队的知识库搭建和问答, 也可以用于RAG检索流程的学习 </b>
+
+<b>基于 LlamaIndex 和 Streamlit 构建</b>
+
+<br>
+
+*如果该项目对你有用, 欢迎star🌟 &  fork🍴*
+
+<br>
+
+</p>
+
+</div>
+
 ---
 # 🐱 部署示例
 ## 📚知识库管理
