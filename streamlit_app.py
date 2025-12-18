@@ -27,7 +27,7 @@ st.markdown("""
     footer {visibility: hidden;}
 
     /* ========== 2. 侧边栏样式========== */
-    section[data-testid="stSidebar"] p, 
+    section[data-testid="stSidebar"] p,
     section[data-testid="stSidebar"] span {
         font-size: 16px !important;
         line-height: 1.8 !important;
@@ -52,79 +52,70 @@ st.markdown("""
         border-radius: 50%;
         margin-right: 5px;
     }
-    .status-error { background-color: #4caf50; }
-    .status-ok { background-color: #f44336; }
+    .status-error { background-color: #f44336; }
+    .status-ok { background-color: #4caf50; }
+
 
     /* ========== 4. 聊天界面样式  ========== */
-    /* 助手消息 (原生 st.chat_message) */
-    /* 给助手气泡加一个浅灰背景，使其更像气泡 */
     [data-testid="stChatMessageContent"] {
         background-color: #f0f2f6;
         border-radius: 10px;
         padding: 10px 15px;
-        border-top-left-radius: 0; /* 左上角尖角 */
-        margin-right: 40%; /* 限制最大宽度 */
+        border-top-left-radius: 0;
+        margin-right: 40%;
         font-size: 20px !important;
         margin-top: 20px !important;
     }
 
-    /* 容器：顶部对齐 */
     .user-chat-container {
         display: flex;
         justify-content: flex-end;
-        align-items: flex-start; /* 顶部对齐 */
+        align-items: flex-start;
         margin-bottom: 20px;
     }
 
-     /* 用户头像 */
     .user-avatar {
         width: 30px;
         height: 30px;
         font-size: 32px;
         margin-left: 3px;
-        margin-right: 15px; 
-        /* 头像自然对齐顶部 */
+        margin-right: 15px;
         display: flex;
-        align-items: flex-start; 
+        align-items: flex-start;
         padding-top: 0px;
     }
 
-    /* 用户气泡 */
     .user-bubble {
-        background-color: transparent; 
+        background-color: transparent;
         border: 1px solid #e0e0e0;
         color: inherit;
         padding: 8px 12px;
         border-radius: 12px;
-        /* 🔥 关键还原：右上角尖角 (符合图片) */
-        border-top-right-radius: 0; 
+        border-top-right-radius: 0;
         max-width: 80%;
         text-align: left;
         word-wrap: break-word;
         box-shadow: 0 1px 1px rgba(0,0,0,0.03);
         font-size: 20px !important;
-        /* 🔥 关键微调：气泡下沉 12px，对齐头像的眼睛/面部，而不是头顶 */
-        margin-top: 30px; 
+        margin-top: 30px;
     }
-    /* ========== [新增] AI 助手头像大小调节 ========== */
-    /* 1. 放大头像容器，并设置最小宽度防止被Flex挤压 */
+
     [data-testid="stChatMessage"] [data-testid="stChatMessageAvatar"] {
         width: 60px !important;
         height: 60px !important;
-        min-width: 60px !important; /* 关键：防止 flex 布局压缩 */
-        margin-right: 15px !important; /* 增加头像和气泡的间距 */
+        min-width: 60px !important;
+        margin-right: 15px !important;
     }
 
-    /* 2. 放大头像内部的 Emoji 字体和居中容器 */
     [data-testid="stChatMessage"] [data-testid="stChatMessageAvatar"] > div {
         width: 60px !important;
         height: 60px !important;
         line-height: 60px !important;
-        font-size: 40px !important; /* Emoji 字体大小 */
+        font-size: 40px !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
-        border-radius: 50% !important; /* 保持圆形 */
+        border-radius: 50% !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -152,12 +143,10 @@ def init_session_state():
         st.session_state.kb_list = []
     if "show_create_kb" not in st.session_state:
         st.session_state.show_create_kb = False
-
     if "confirm_delete_file" not in st.session_state:
         st.session_state.confirm_delete_file = None
     if "confirm_delete_kb" not in st.session_state:
         st.session_state.confirm_delete_kb = None
-
     if "toast_msg" not in st.session_state:
         st.session_state.toast_msg = None
     if "error_msg" not in st.session_state:
@@ -168,11 +157,9 @@ def init_session_state():
 def create_kb_callback(pipeline):
     """创建知识库回调"""
     name = st.session_state.get("new_kb_name_input", "").strip()
-
     if not name:
         st.session_state.error_msg = "❌ 名称不能为空"
         return
-
     ok, msg = pipeline.create_kb(name)
     if ok:
         st.session_state.kb_list = pipeline.list_knowledge_bases()
@@ -187,12 +174,10 @@ def create_kb_callback(pipeline):
 def delete_kb_confirmed(pipeline, kb_name):
     """执行已确认的知识库删除"""
     pipeline.delete_knowledge_base(kb_name)
-
     if st.session_state.current_kb == kb_name:
         st.session_state.current_kb = DEFAULT_KB_NAME
         st.session_state.kb_selector = DEFAULT_KB_NAME
         st.session_state.messages = []
-
     st.session_state.kb_list = pipeline.list_knowledge_bases()
     st.session_state.confirm_delete_kb = None
     st.session_state.toast_msg = f"已删除知识库: {kb_name}"
@@ -236,9 +221,7 @@ def main():
     col_header, col_status = st.columns([4, 1])
     with col_header:
         st.title("😺 HardWare RAG")
-
     with col_status:
-        # 状态显示
         status = resource_manager.get_status()
         st.markdown(f"""
             <div style="text-align:right; padding-top:10px;">
@@ -249,37 +232,23 @@ def main():
     # ------------------ 侧边栏 ------------------
     with st.sidebar:
         st.subheader("😼 Hardware RAG导航")
-
-        selected_tab = st.radio(
-            "功能切换",
-            ["💬 智能对话", "📚 知识库管理"],
-            label_visibility="collapsed"
-        )
-
+        selected_tab = st.radio("功能切换", ["💬 智能对话", "📚 知识库管理"], label_visibility="collapsed")
         st.divider()
-
         st.markdown(f"**📍 当前知识库:**")
         if st.session_state.current_kb not in st.session_state.kb_list:
             st.session_state.current_kb = DEFAULT_KB_NAME
             if DEFAULT_KB_NAME not in st.session_state.kb_list:
                 st.session_state.kb_list.append(DEFAULT_KB_NAME)
 
-        selected_kb = st.selectbox(
-            "选择知识库",
-            options=st.session_state.kb_list,
-            key="kb_selector"
-        )
-
+        selected_kb = st.selectbox("选择知识库", options=st.session_state.kb_list, key="kb_selector")
         if selected_kb != st.session_state.current_kb:
             st.session_state.current_kb = selected_kb
             st.session_state.messages = []
             st.session_state.confirm_delete_file = None
             st.rerun()
 
-        # 使用 st.expander 实现"下拉展开查看"，而非下拉选择
         kb_files = pipeline.list_files(st.session_state.current_kb)
         st.info(f"当前库包含 {len(kb_files)} 个文件")
-
         if kb_files:
             with st.expander("📚 查看库内文档"):
                 for f in kb_files:
@@ -287,20 +256,11 @@ def main():
 
         st.divider()
         st.markdown("### 🐱‍👓️ 说明与注意事项")
-        st.warning(
-            """
-            **1. 文件支持:**
-            支持 PDF, TXT, MD, DOCX, CSV, HTML 格式文档。
-
-            **2. 知识库管理:**
-            - **新建**: 点击"知识库管理"页面的"➕ 新建"。
-            - **切换**: 切换知识库会**清空当前对话**。
-
-            **3. 数据安全:**
-            - 删除文件或知识库的操作是**不可恢复**的，请谨慎操作。
-            - 默认库 `source_documents` 不可被删除。
-            """
-        )
+        st.warning("""
+            **1. 文件支持:** 支持 PDF, TXT, MD, DOCX, CSV, HTML 格式文档。
+            **2. 知识库管理:** - **新建**: 点击"知识库管理"页面的"➕ 新建"。 - **切换**: 切换知识库会**清空当前对话**。
+            **3. 数据安全:** - 删除文件或知识库的操作是**不可恢复**的。 - 默认库 `source_documents` 不可被删除。
+        """)
         st.caption("© 2025 HardWare RAG Assistant")
 
     # ------------------ 页面内容分发 ------------------
@@ -316,37 +276,26 @@ def render_chat_tab(pipeline):
     chat_container = st.container(height=750, border=True)
 
     with chat_container:
-        # --- 欢迎语 ---
         if not st.session_state.messages:
-            st.markdown(
-                """
+            st.markdown("""
                 <div style='text-align:center; color:#888; padding-top:180px;'>
                     <h3 style="margin-top:10px;">🙌 硬件文档检索助手</h3>
                     <p>请问有什么可以帮您？</p>
                 </div>
-                """,
-                unsafe_allow_html=True
-            )
+            """, unsafe_allow_html=True)
         else:
-            # --- 消息渲染 ---
             for msg in st.session_state.messages:
                 role = msg["role"]
                 content = msg["content"]
-
                 if role == "user":
-                    # 用户消息
                     safe_content = content.replace("\n", "<br>")
-                    st.markdown(
-                        f"""
+                    st.markdown(f"""
                         <div class="user-chat-container">
                             <div class="user-bubble">{safe_content}</div>
-                            <div class="user-avatar">🧑</div> 
+                            <div class="user-avatar">🧑</div>
                         </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
+                    """, unsafe_allow_html=True)
                 else:
-                    # 助手消息
                     with st.chat_message("assistant", avatar="😽"):
                         separator = "**🔍 检索到的上下文:**"
                         if separator in content:
@@ -359,10 +308,8 @@ def render_chat_tab(pipeline):
                                 st.markdown(content)
                         else:
                             st.markdown(content)
-
     st.markdown("---")
 
-    # --- 输入区 ---
     col_input, col_btn = st.columns([6, 1])
     with col_input:
         user_input = st.chat_input("请输入问题...", key="chat_input")
@@ -371,28 +318,37 @@ def render_chat_tab(pipeline):
             st.session_state.messages = []
             st.rerun()
 
-    # --- 处理新输入 ---
     if user_input:
         st.session_state.messages.append({"role": "user", "content": user_input})
 
-        with chat_container:
-            # 1. 用户消息上屏
-            safe_input = user_input.replace("\n", "<br>")
-            st.markdown(
-                f"""
-                <div class="user-chat-container">
-                    <div class="user-bubble">{safe_input}</div>
-                    <div class="user-avatar">🧑</div>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
+        # 重新渲染一次，让用户输入立即显示
+        st.rerun()
 
-            # 2. 助手回答
+    # --- 检查是否有新消息需要处理 ---
+    # 确保最后一条消息是用户的，并且没有对应的助手消息
+    if st.session_state.messages and st.session_state.messages[-1]["role"] == "user":
+
+        with chat_container:
+            # 找到最后的用户消息
+            last_user_message = st.session_state.messages[-1]
+            user_input_to_process = last_user_message["content"]
+
+            # --- 核心修复点: 构建正确的对话历史 ---
+            chat_history = []
+            # 获取除了当前用户输入之外的所有历史消息
+            messages_for_history = st.session_state.messages[:-1]
+            user_msg = None
+            for msg in messages_for_history:
+                if msg["role"] == "user":
+                    user_msg = msg["content"]
+                elif msg["role"] == "assistant" and user_msg is not None:
+                    chat_history.append((user_msg, msg["content"]))
+                    user_msg = None  # 重置以等待下一个用户消息
+
             with st.chat_message("assistant", avatar="😻"):
                 with st.spinner("思考中..."):
-                    history = [(m["content"], "") for m in st.session_state.messages if m["role"] == "user"]
-                    response = pipeline.query(user_input, st.session_state.current_kb, history[-5:])
+                    # 传递最近的5条历史
+                    response = pipeline.query(user_input_to_process, st.session_state.current_kb, chat_history[-5:])
 
                     separator = "**🔍 检索到的上下文:**"
                     if separator in response:
@@ -410,16 +366,10 @@ def render_chat_tab(pipeline):
 # ==================== Tab 2: 管理界面 ====================
 def render_kb_management_tab(pipeline):
     st.subheader("📚 知识库管理")
-
-    # --- 1. 上传区建立索引区 ---
     with st.container(border=True):
         st.markdown("##### 📤 当前知识库上传文档")
-        files = st.file_uploader(
-            "拖拽文件到此处",
-            accept_multiple_files=True,
-            type=["pdf", "txt", "md", "docx", "html", "csv"]
-        )
-
+        files = st.file_uploader("拖拽文件到此处", accept_multiple_files=True,
+                                 type=["pdf", "txt", "md", "docx", "html", "csv"])
         if files and st.button("开始上传", type="primary"):
             with st.status("处理中...", expanded=True) as status:
                 st.write("保存临时文件...")
@@ -430,26 +380,20 @@ def render_kb_management_tab(pipeline):
                     with open(path, "wb") as wb:
                         wb.write(f.getbuffer())
                     temp_paths.append(path)
-
                 st.write("正在建立索引...")
                 res = pipeline.upload_files(temp_paths, st.session_state.current_kb)
-
                 for p in temp_paths:
                     try:
                         os.remove(p)
                     except:
                         pass
-
                 status.update(label="✅ 完成", state="complete", expanded=False)
-
             st.success(res.split('\n')[0])
             time.sleep(1)
             st.rerun()
     st.divider()
 
-    # --- 2. 列表与切换区 ---
     st.markdown("##### 📁 知识库列表")
-
     col_kbs, col_new = st.columns([9, 1])
     with col_kbs:
         st.caption(f"共有 {len(st.session_state.kb_list)} 个知识库")
@@ -463,25 +407,19 @@ def render_kb_management_tab(pipeline):
             with st.form("new_kb_form"):
                 st.text_input("输入新知识库名称", placeholder="例如: project_alpha", key="new_kb_name_input")
                 st.form_submit_button("确认创建", on_click=create_kb_callback, args=(pipeline,))
-
             if st.button("取消", key="cancel_create_kb"):
                 st.session_state.show_create_kb = False
                 st.rerun()
 
-    # --- 知识库列表展示 ---
     for kb in st.session_state.kb_list:
         files = pipeline.list_files(kb)
         is_current = (kb == st.session_state.current_kb)
-
         with st.expander(f"{'🟢' if is_current else '⚪'} {kb} ({len(files)} 文件)", expanded=is_current):
-
-            # --- 文件列表 ---
             if files:
                 st.markdown("**📄 文件列表:**")
                 container_kwargs = {"border": True}
                 if len(files) > 5:
                     container_kwargs["height"] = 300
-
                 with st.container(**container_kwargs):
                     for f in files:
                         c1, c2 = st.columns([0.80, 0.20])
@@ -490,7 +428,6 @@ def render_kb_management_tab(pipeline):
                         with c2:
                             current_confirm = st.session_state.confirm_delete_file
                             is_confirming = (current_confirm == (kb, f))
-
                             if is_confirming:
                                 sub_c1, sub_c2 = st.columns([1, 1])
                                 with sub_c1:
@@ -515,32 +452,19 @@ def render_kb_management_tab(pipeline):
                 st.caption("暂无文件")
 
             st.divider()
-
-            # --- 底部按钮 ---
             col_switch, col_del = st.columns([1, 1])
             with col_switch:
                 if not is_current:
-                    st.button(
-                        "🔄 切换到此知识库",
-                        key=f"btn_switch_{kb}",
-                        on_click=switch_kb_callback,
-                        args=(kb,)
-                    )
+                    st.button("🔄 切换到此知识库", key=f"btn_switch_{kb}", on_click=switch_kb_callback, args=(kb,))
                 else:
                     st.button("✅ 当前使用中", disabled=True, key=f"btn_cur_{kb}")
-
             with col_del:
                 if kb != DEFAULT_KB_NAME:
                     if st.session_state.confirm_delete_kb == kb:
                         st.markdown("**确认删除?**")
                         sub_c1, sub_c2 = st.columns([1, 1])
                         with sub_c1:
-                            st.button(
-                                "✅ 是",
-                                key=f"yes_kb_{kb}",
-                                on_click=delete_kb_confirmed,
-                                args=(pipeline, kb)
-                            )
+                            st.button("✅ 是", key=f"yes_kb_{kb}", on_click=delete_kb_confirmed, args=(pipeline, kb))
                         with sub_c2:
                             if st.button("❌ 否", key=f"no_kb_{kb}"):
                                 st.session_state.confirm_delete_kb = None

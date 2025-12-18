@@ -38,6 +38,7 @@ def init_global_models():
 
         # 3. 初始化 Reranker
         _init_reranker()
+
         # 4. 初始化 分词器
         text_splitter = SentenceSplitter(
             chunk_size=CHUNK_SIZE,
@@ -271,7 +272,6 @@ def get_current_config() -> dict:
 def print_config():
     """
     打印当前配置（用于调试）
-
     在启动时调用此函数可以查看完整的配置信息
     """
     config = get_current_config()
