@@ -19,22 +19,39 @@ st.set_page_config(
 st.markdown("""
 <style>
     /* ========== 1. 全局与容器调整 ========== */
+    /* 核心修复：消除顶部默认内边距，防止滚动时的回弹计算误差 */
     .block-container {
-        padding-top: 2rem !important;
-        padding-bottom: 1rem !important;
+        padding-top: 0rem !important;
+        padding-bottom: 5rem !important; /* 底部留白给输入框 */
     }
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
 
     /* ========== 2. 侧边栏样式========== */
-    section[data-testid="stSidebar"] p,
-    section[data-testid="stSidebar"] span {
+    .sidebar-main-title {
+        font-size: 24px !important;
+        font-weight: 700 !important;
+        padding-top: 5px !important;
+        padding-bottom: 15px !important; /* 调整与下方分割线的距离 */
+    }
+
+    section[data-testid="stSidebar"] p {
         font-size: 16px !important;
         line-height: 1.8 !important;
     }
-    section[data-testid="stSidebar"] h1,
-    section[data-testid="stSidebar"] h2,
-    section[data-testid="stSidebar"] h3 {
+
+    /* --- 增大选项字体 & 对齐圆点 --- */
+    [data-testid="stRadio"] label {
+        display: flex !important;
+        align-items: center !important; /* 垂直对齐圆点和文字 */
+        margin-bottom: 20px !important; /* 增加选项间距 */
+    }
+    [data-testid="stRadio"] span {
+        font-size: 18px !important; /* 增大选项字体 */
+        font-weight: 700 !important;
+    }
+
+    section[data-testid="stSidebar"] h3:not(.sidebar-main-title) {
         font-size: 20px !important;
         padding-top: 5px !important;
         padding-bottom: 30px !important;
@@ -217,22 +234,44 @@ def main():
     if not st.session_state.kb_list:
         refresh_kb_list(pipeline)
 
-    # ------------------ 顶部栏 ------------------
-    col_header, col_status = st.columns([4, 1])
-    with col_header:
-        st.title("😺 HardWare RAG")
-    with col_status:
-        status = resource_manager.get_status()
-        st.markdown(f"""
-            <div style="text-align:right; padding-top:10px;">
-                <span class="status-indicator {'status-ok' if status.get('models_initialized') else 'status-error'}"></span> AI模型<br>
-                <span class="status-indicator {'status-ok' if status.get('chroma_connected') else 'status-error'}"></span> 向量库</div>
+    # ------------------ 顶部栏 (应用更稳健的 CSS Sticky 效果) ------------------
+    # 使用 st.container 包裹顶部内容，并插入隐藏的 div 用于 CSS 定位
+    with st.container():
+        st.markdown("""
+            <div class="fixed-header-marker"></div>
+            <style>
+                /* 使用 :has 选择器精确定位头部容器 */
+                div[data-testid="stVerticalBlock"] > div:has(div.fixed-header-marker) {
+                    position: sticky;
+                    top: 0.7rem; /* 预留出 Streamlit 顶部工具栏的高度 */
+                    background-color: white;
+                    z-index: 999;
+                    padding-top: 1rem; /* 在容器内部补偿视觉间距 */
+                    padding-bottom: 10px;
+                    border-bottom: 1px solid #f0f2f6;
+                    margin-top: -2rem; /* 抵消可能的外部间距 */
+                }
+            </style>
         """, unsafe_allow_html=True)
+
+        col_header, col_status = st.columns([4, 1])
+        with col_header:
+            st.title("😺 HardWare RAG")
+            st.markdown(f"**正在使用知识库:** `{st.session_state.current_kb}`")
+        with col_status:
+            status = resource_manager.get_status()
+            st.markdown(f"""
+                <div style="text-align:right; padding-top:40px;">
+                    <span class="status-indicator {'status-ok' if status.get('models_initialized') else 'status-error'}"></span> AI模型<br>
+                    <span class="status-indicator {'status-ok' if status.get('chroma_connected') else 'status-error'}"></span> 向量库</div>
+            """, unsafe_allow_html=True)
 
     # ------------------ 侧边栏 ------------------
     with st.sidebar:
-        st.subheader("😼 Hardware RAG导航")
-        selected_tab = st.radio("功能切换", ["💬 智能对话", "📚 知识库管理"], label_visibility="collapsed")
+        st.markdown('<h2 class="sidebar-main-title">😼 Hardware RAG导航</h2>', unsafe_allow_html=True)
+        st.divider()
+
+        selected_tab = st.radio("**🚩 功能切换:**", ["💬 智能对话", "📚 知识库管理"], label_visibility="collapsed")
         st.divider()
         st.markdown(f"**📍 当前知识库:**")
         if st.session_state.current_kb not in st.session_state.kb_list:
@@ -254,13 +293,28 @@ def main():
                 for f in kb_files:
                     st.markdown(f"- 📄 {f}")
 
+        # "清空"按钮的位置
+        if selected_tab == "💬 智能对话":
+            if st.button("🗑️ 清空对话", use_container_width=True, type="secondary"):
+                st.session_state.messages = []
+                st.rerun()
+
         st.divider()
-        st.markdown("### 🐱‍👓️ 说明与注意事项")
+        st.markdown("<h3>🐱‍👓️ 说明与注意事项</h3>", unsafe_allow_html=True)
+
         st.warning("""
-            **1. 文件支持:** 支持 PDF, TXT, MD, DOCX, CSV, HTML 格式文档。
-            **2. 知识库管理:** - **新建**: 点击"知识库管理"页面的"➕ 新建"。 - **切换**: 切换知识库会**清空当前对话**。
-            **3. 数据安全:** - 删除文件或知识库的操作是**不可恢复**的。 - 默认库 `source_documents` 不可被删除。
+        **1. 文件支持:** 
+        - 支持 PDF, TXT, MD, DOCX, CSV, HTML 格式文档。
+
+        **2. 知识库管理:** 
+        - **新建**: 点击"知识库管理"页面的"➕ 新建"。 
+        - **切换**: 切换知识库会**清空当前对话**。
+
+        **3. 数据安全:** 
+        - 删除文件或知识库的操作是**不可恢复**的。 
+        - 默认库 `source_documents` 不可被删除。
         """)
+        st.divider()
         st.caption("© 2025 HardWare RAG Assistant")
 
     # ------------------ 页面内容分发 ------------------
@@ -272,31 +326,34 @@ def main():
 
 # ==================== Tab 1: 对话界面 ====================
 def render_chat_tab(pipeline):
-    st.caption(f"正在使用知识库: `{st.session_state.current_kb}`")
-    chat_container = st.container(height=750, border=True)
+    st.markdown('<div style="height: 30px;"></div>', unsafe_allow_html=True)
 
-    with chat_container:
-        if not st.session_state.messages:
-            st.markdown("""
-                <div style='text-align:center; color:#888; padding-top:180px;'>
-                    <h3 style="margin-top:10px;">🙌 硬件文档检索助手</h3>
-                    <p>请问有什么可以帮您？</p>
-                </div>
-            """, unsafe_allow_html=True)
-        else:
-            for msg in st.session_state.messages:
-                role = msg["role"]
-                content = msg["content"]
-                if role == "user":
-                    safe_content = content.replace("\n", "<br>")
-                    st.markdown(f"""
-                        <div class="user-chat-container">
-                            <div class="user-bubble">{safe_content}</div>
-                            <div class="user-avatar">🧑</div>
-                        </div>
-                    """, unsafe_allow_html=True)
-                else:
-                    with st.chat_message("assistant", avatar="😽"):
+    # 1. 渲染历史消息
+    if not st.session_state.messages:
+        st.markdown("""
+            <div style='text-align:center; color:#888; padding-top:180px;'>
+                <h3 style="margin-top:100px;">🙌 硬件文档检索助手</h3>
+                <p>请问有什么可以帮您？</p>
+            </div>
+        """, unsafe_allow_html=True)
+    else:
+        for msg in st.session_state.messages:
+            role = msg["role"]
+            content = msg["content"]
+            if role == "user":
+                safe_content = content.replace("\n", "<br>")
+                st.markdown(f"""
+                    <div class="user-chat-container">
+                        <div class="user-bubble">{safe_content}</div>
+                        <div class="user-avatar">🧑</div>
+                    </div>
+                """, unsafe_allow_html=True)
+            else:
+                with st.chat_message("assistant", avatar="😽"):
+                    # 检查是否是错误消息
+                    if content.startswith("Error:") or content == "Empty response.":
+                        st.error(content)
+                    else:
                         separator = "**🔍 检索到的上下文:**"
                         if separator in content:
                             try:
@@ -308,63 +365,70 @@ def render_chat_tab(pipeline):
                                 st.markdown(content)
                         else:
                             st.markdown(content)
-    st.markdown("---")
 
-    col_input, col_btn = st.columns([6, 1])
-    with col_input:
-        user_input = st.chat_input("请输入问题...", key="chat_input")
-    with col_btn:
-        if st.button("🗑️ 清空", use_container_width=True):
-            st.session_state.messages = []
-            st.rerun()
+    # 2. 检查并处理新的流式响应
+    if st.session_state.messages and st.session_state.messages[-1]["role"] == "user":
+        user_input_to_process = st.session_state.messages[-1]["content"]
 
-    if user_input:
-        st.session_state.messages.append({"role": "user", "content": user_input})
+        chat_history = []
+        messages_for_history = st.session_state.messages[:-1]
+        user_msg = None
+        for msg in messages_for_history:
+            if msg["role"] == "user":
+                user_msg = msg["content"]
+            elif msg["role"] == "assistant" and user_msg is not None:
+                chat_history.append((user_msg, msg["content"]))
+                user_msg = None
 
-        # 重新渲染一次，让用户输入立即显示
+        with st.chat_message("assistant", avatar="😻"):
+            # 初始化变量
+            full_response = ""
+            first_chunk = None
+            error_occured = None
+
+            # --- 关键修改：带有错误处理的思考过程 ---
+            with st.spinner("正在思考中..."):
+                try:
+                    # 获取生成器
+                    gen = pipeline.query(user_input_to_process, st.session_state.current_kb, chat_history[-5:])
+                    # 尝试获取第一个字符，这会触发实际的检索和推理
+                    first_chunk = next(gen)
+                except StopIteration:
+                    # 生成器正常结束但为空
+                    first_chunk = None
+                except Exception as e:
+                    # 捕获所有其他错误（如连接超时、API错误）
+                    error_occured = str(e)
+
+            # --- 根据结果进行输出 ---
+            if error_occured:
+                st.error(f"❌ 处理请求时发生错误: {error_occured}")
+                full_response = f"Error: {error_occured}"
+            elif first_chunk is None:
+                st.warning("⚠️ AI 未生成任何内容。")
+                full_response = "Empty response."
+            else:
+                # 定义一个帮助函数来重新组合流
+                def stream_helper():
+                    yield first_chunk  # 先输出刚才拿到的第一个块
+                    yield from gen  # 再输出剩下的
+
+                # 使用 write_stream 渲染
+                full_response = st.write_stream(stream_helper())
+
+        # 将最终结果存入历史记录并刷新
+        st.session_state.messages.append({"role": "assistant", "content": full_response})
         st.rerun()
 
-    # --- 检查是否有新消息需要处理 ---
-    # 确保最后一条消息是用户的，并且没有对应的助手消息
-    if st.session_state.messages and st.session_state.messages[-1]["role"] == "user":
-
-        with chat_container:
-            # 找到最后的用户消息
-            last_user_message = st.session_state.messages[-1]
-            user_input_to_process = last_user_message["content"]
-
-            # --- 核心修复点: 构建正确的对话历史 ---
-            chat_history = []
-            # 获取除了当前用户输入之外的所有历史消息
-            messages_for_history = st.session_state.messages[:-1]
-            user_msg = None
-            for msg in messages_for_history:
-                if msg["role"] == "user":
-                    user_msg = msg["content"]
-                elif msg["role"] == "assistant" and user_msg is not None:
-                    chat_history.append((user_msg, msg["content"]))
-                    user_msg = None  # 重置以等待下一个用户消息
-
-            with st.chat_message("assistant", avatar="😻"):
-                with st.spinner("思考中..."):
-                    # 传递最近的5条历史
-                    response = pipeline.query(user_input_to_process, st.session_state.current_kb, chat_history[-5:])
-
-                    separator = "**🔍 检索到的上下文:**"
-                    if separator in response:
-                        main_text, source_text = response.split(separator, 1)
-                        st.markdown(main_text.strip())
-                        with st.expander("📚 参考来源"):
-                            st.markdown(source_text.strip())
-                    else:
-                        st.markdown(response)
-
-        st.session_state.messages.append({"role": "assistant", "content": response})
+    # --- 输入框 ---
+    if prompt := st.chat_input("请输入问题..."):
+        st.session_state.messages.append({"role": "user", "content": prompt})
         st.rerun()
 
 
 # ==================== Tab 2: 管理界面 ====================
 def render_kb_management_tab(pipeline):
+    st.markdown('<div style="height: 30px;"></div>', unsafe_allow_html=True)
     st.subheader("📚 知识库管理")
     with st.container(border=True):
         st.markdown("##### 📤 当前知识库上传文档")

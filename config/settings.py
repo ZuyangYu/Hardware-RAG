@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 # 加载 .env 文件
 load_dotenv()
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  #根目录
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # 根目录
 DATA_ROOT = os.path.join(BASE_DIR, "data")
 STORAGE_DIR = os.path.join(BASE_DIR, "storage")
 CHROMA_PATH = os.path.join(STORAGE_DIR, "chroma_db")
@@ -58,13 +58,11 @@ RRF_K = int(os.getenv("RRF_K", "60"))
 class RerankerType(Enum):
     NONE = "none"  # 不使用 Reranker
     LOCAL = "local"  # 本地 Sentence Transformer
-    OLLAMA = "ollama"  # Ollama Reranker
     API = "api"  # API Reranker
 
 
 RERANKER_TYPE = RerankerType(os.getenv("RERANKER_TYPE", "none").lower())
 RERANKER_MODEL = os.getenv("RERANKER_MODEL", "BAAI/bge-reranker-v2-gemma")
-OLLAMA_RERANKER_MODEL = os.getenv("OLLAMA_RERANKER_MODEL", "bge-reranker-v2-m3:latest")
 RERANKER_API_KEY = os.getenv("RERANKER_API_KEY", "")
 RERANKER_API_BASE = os.getenv("RERANKER_API_BASE", "https://api.openai.com/v1")
 

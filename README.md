@@ -37,6 +37,8 @@ Hardware-RAG/
 ├── config/
 │   └── settings.py          # 全局配置与环境变量加载
 ├── data/                    # (自动生成) 原始文档存储路径
+├── docs/
+│   └── architecture_doc.md  # 系统架构说明文档
 ├── storage/                 # (自动生成) 向量数据库与缓存
 ├── src/
 │   ├── core/

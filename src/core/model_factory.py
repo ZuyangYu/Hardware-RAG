@@ -1,10 +1,4 @@
 # src/core/model_factory.py
-"""
-模型工厂 - 统一的模型初始化模块
-支持两种模式：
-1. ollama: 本地 Ollama 服务
-2. custom: 所有第三方 API（OpenAI、OpenRouter、DeepSeek 等）
-"""
 from llama_index.core import Settings
 from llama_index.llms.ollama import Ollama
 from llama_index.embeddings.ollama import OllamaEmbedding
@@ -13,7 +7,7 @@ from llama_index.core.postprocessor import SentenceTransformerRerank
 from config.settings import *
 from llama_index.core.node_parser import SentenceSplitter
 from src.core.logger import log, error, warn
-from src.core.custom_reranker import OllamaReranker, APIReranker, NoReranker
+from src.core.custom_reranker import APIReranker, NoReranker
 from src.core.custom_llm import GenericOpenAILLM
 
 
@@ -175,10 +169,9 @@ def _init_reranker():
 
     Reranker 用于对检索结果进行二次排序，提高精度
 
-    支持四种模式：
+    支持三种模式：
     - none: 不使用 Reranker（最快，精度一般）
     - local: 本地 Sentence Transformer 模型（精度高，需要下载模型）
-    - ollama: 使用 Ollama 模拟 Reranker（兼容性好）
     - api: 使用 API 服务（需要付费）
     """
     try:
@@ -189,7 +182,8 @@ def _init_reranker():
 
         elif RERANKER_TYPE == RerankerType.LOCAL:
             # ==================== 本地 Reranker ====================
-            # 设置模型缓存目录
+            # 设置模型缓存目录, SentenceTransformer 会自动检查此目录
+            # 如果模型已存在,则直接加载,否则会自动下载
             os.environ['SENTENCE_TRANSFORMERS_HOME'] = RERANKER_CACHE
 
             Settings.node_postprocessors = [
@@ -201,21 +195,7 @@ def _init_reranker():
             log(f"Reranker: 本地模型")
             log(f"   ├─ 模型: {RERANKER_MODEL}")
             log(f"   ├─ Top-N: {FINAL_TOP_K}")
-            log(f"   └─ 缓存: {RERANKER_CACHE}")
-
-        elif RERANKER_TYPE == RerankerType.OLLAMA:
-            # ==================== Ollama Reranker ====================
-            Settings.node_postprocessors = [
-                OllamaReranker(
-                    model=OLLAMA_RERANKER_MODEL,
-                    base_url=OLLAMA_BASE_URL,
-                    top_n=FINAL_TOP_K
-                )
-            ]
-            log(f"Reranker: Ollama")
-            log(f"   ├─ 模型: {OLLAMA_RERANKER_MODEL}")
-            log(f"   ├─ 地址: {OLLAMA_BASE_URL}")
-            log(f"   └─ Top-N: {FINAL_TOP_K}")
+            log(f"   └─ 缓存/本地路径: {RERANKER_CACHE}")
 
         elif RERANKER_TYPE == RerankerType.API:
             # ==================== API Reranker ====================
